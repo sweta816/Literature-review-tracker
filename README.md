@@ -5,24 +5,11 @@ A cloud-synced, browser-based research paper management tool built for academics
 **Live App:** [storied-khapse-9a663c.netlify.app](https://storied-khapse-9a663c.netlify.app)
 
 ![Built with React](https://img.shields.io/badge/Built%20with-React%2018-61dafb?style=flat-square&logo=react)
-![Firebase](https://img.shields.io/badge/Database-Firebase%20Firestore-orange?style=flat-square&logo=firebase)
-![Deployed on Netlify](https://img.shields.io/badge/Deployed-Netlify-00c7b7?style=flat-square&logo=netlify)
-![No Build Required](https://img.shields.io/badge/No%20build%20step-required-7c3aed?style=flat-square)
-
 ---
 
 ## 💡 Motivation
 
 Conducting a rigorous literature review is one of the most demanding parts of academic research. According to best practices recommended by university research libraries, a well-structured literature review requires tracking not just paper details, but also **search strategies, eligibility criteria, methodological patterns, and research gaps** across your entire body of sources.
-
-Existing tools each solve part of the problem:
-
-| Tool | What it does well | What it lacks |
-|---|---|---|
-| **Zotero** | Reference management, citation styles | No methodology tracking or analytics |
-| **Mendeley** | PDF annotation, organization | Limited customization, no dashboard |
-| **Rayyan** | AI-assisted screening for systematic reviews | Complex, overkill for most reviews |
-| **Spreadsheets** | Flexible | No analytics, hard to maintain, not cloud-synced |
 
 I wanted something lightweight, visual, and purpose-built for tracking the *content* of papers — not just their citations. This app fills that gap.
 
