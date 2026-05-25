@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Literature Review Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- React -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <!-- Excel Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple-dark: #4c1d95;
+      --purple-mid: #6d28d9;
+      --purple-light: #8b5cf6;
+      --purple-pale: #ede9fe;
+      --purple-faint: #f5f3ff;
+      --green-dark: #065f46;
+      --green-mid: #059669;
+      --green-light: #34d399;
+      --green-pale: #d1fae5;
+      --green-faint: #ecfdf5;
+      --bg: #f8f7ff;
+      --surface: #ffffff;
+      --border: #e0d9f7;
+      --text-primary: #1e1b4b;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --danger: #dc2626;
+      --danger-pale: #fee2e2;
+      --warning: #d97706;
+      --warning-pale: #fef3c7;
+      --shadow-sm: 0 1px 3px rgba(109,40,217,0.08), 0 1px 2px rgba(109,40,217,0.04);
+      --shadow-md: 0 4px 16px rgba(109,40,217,0.10), 0 2px 6px rgba(109,40,217,0.06);
+      --shadow-lg: 0 10px 40px rgba(109,40,217,0.15);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; }
+
+    /* ── LOGIN SCREEN ── */
+    .login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--purple-dark) 0%, var(--purple-mid) 50%, var(--green-dark) 100%);
+      padding: 20px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 48px 44px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      animation: fadeUp 0.35s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .login-icon { font-size: 3.2rem; margin-bottom: 16px; }
+    .login-card h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--purple-dark);
+      margin-bottom: 8px;
+    }
+    .login-card p {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin-bottom: 32px;
+    }
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 13px 20px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      background: #fff;
+      font-size: 0.92rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+    }
+    .btn-google:hover {
+      border-color: var(--purple-light);
+      box-shadow: 0 4px 14px rgba(109,40,217,0.15);
+      transform: translateY(-1px);
+    }
+    .google-logo { width: 20px; height: 20px; }
+    .login-footer {
+      margin-top: 24px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── LOADING ── */
+    .loading-screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      gap: 16px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--purple-pale);
+      border-top-color: var(--purple-mid);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 0.88rem; color: var(--text-muted); }
+
+    /* ── HEADER ── */
+    .app-header {
+      background: linear-gradient(135deg, var(--purple-dark) 0%, var(--purple-mid) 60%, var(--green-dark) 100%);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(76,29,149,0.3);
+    }
+    .app-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .app-header p { font-size: 0.76rem; color: rgba(255,255,255,0.72); margin-top: 2px; font-weight: 300; }
+    .header-right { display: flex; align-items: center; gap: 14px; }
+    .header-badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.74rem;
+      font-weight: 500;
+    }
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 24px;
+      padding: 5px 14px 5px 6px;
+    }
+    .user-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.4);
+      object-fit: cover;
+    }
+    .user-avatar-fallback {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--purple-pale);
+      color: var(--purple-dark);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700;
+      border: 1.5px solid rgba(255,255,255,0.4);
+    }
+    .user-name { font-size: 0.78rem; color: #fff; font-weight: 500; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-signout {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.85);
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-signout:hover { background: rgba(255,255,255,0.22); color: #fff; }
+
+    /* ── TABS ── */
+    .tab-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; gap: 4px; box-shadow: var(--shadow-sm); }
+    .tab-btn { background: none; border: none; padding: 13px 18px; font-family: 'Inter', sans-serif; font-size: 0.84rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .tab-btn:hover { color: var(--purple-mid); }
+    .tab-btn.active { color: var(--purple-mid); border-bottom-color: var(--purple-mid); font-weight: 600; }
+
+    /* ── MAIN ── */
+    .main { padding: 26px 32px; max-width: 1600px; margin: 0 auto; }
+
+    /* ── STAT CARDS ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px; }
+    .stat-card { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px; transition: box-shadow 0.2s, transform 0.2s; }
+    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .stat-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+    .stat-icon.purple { background: var(--purple-pale); }
+    .stat-icon.green  { background: var(--green-pale); }
+    .stat-icon.amber  { background: var(--warning-pale); }
+    .stat-icon.pink   { background: #fce7f3; }
+    .stat-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+    .stat-value { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); line-height: 1.1; margin-top: 2px; }
+    .stat-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── TOOLBAR ── */
+    .toolbar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; box-shadow: var(--shadow-sm); }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+    .search-input { width: 100%; padding: 8px 12px 8px 36px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.83rem; font-family: 'Inter', sans-serif; color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .search-input:focus { border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
+    .filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.83rem; font-family: 'Inter', sans-serif; color: var(--text-primary); background: var(--bg); cursor: pointer; outline: none; min-width: 155px; }
+    .filter-select:focus { border-color: var(--purple-light); }
+
+    /* ── BUTTONS ── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: var(--radius-sm); font-size: 0.83rem; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
+    .btn-primary { background: linear-gradient(135deg, var(--purple-mid), var(--purple-dark)); color: #fff; box-shadow: 0 2px 8px rgba(109,40,217,0.3); }
+    .btn-primary:hover { background: linear-gradient(135deg, var(--purple-light), var(--purple-mid)); box-shadow: 0 4px 14px rgba(109,40,217,0.4); transform: translateY(-1px); }
+    .btn-green { background: linear-gradient(135deg, var(--green-mid), var(--green-dark)); color: #fff; box-shadow: 0 2px 8px rgba(5,150,105,0.3); }
+    .btn-green:hover { background: linear-gradient(135deg, var(--green-light), var(--green-mid)); transform: translateY(-1px); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-outline:hover { border-color: var(--purple-light); color: var(--purple-mid); background: var(--purple-faint); }
+    .btn-sm { padding: 5px 9px; font-size: 0.76rem; }
+    .btn-danger { background: var(--danger-pale); color: var(--danger); border: 1px solid #fca5a5; }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-edit { background: var(--purple-pale); color: var(--purple-mid); border: 1px solid #c4b5fd; }
+    .btn-edit:hover { background: var(--purple-mid); color: #fff; }
+
+    /* ── TABLE ── */
+    .table-wrap { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.81rem; }
+    thead tr { background: linear-gradient(135deg, var(--purple-faint), var(--green-faint)); border-bottom: 2px solid var(--border); }
+    th { padding: 12px 13px; text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--purple-dark); white-space: nowrap; }
+    td { padding: 10px 13px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-primary); line-height: 1.45; }
+    td.truncate { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--purple-faint); }
+    .table-count { font-size: 0.77rem; color: var(--text-muted); padding: 9px 15px; background: var(--purple-faint); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+
+    .no-data { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .no-data-icon { font-size: 3rem; margin-bottom: 12px; }
+    .no-data p { font-size: 0.88rem; }
+
+    /* ── BADGES ── */
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+    .badge-high   { background: var(--green-pale); color: var(--green-dark); }
+    .badge-medium { background: var(--warning-pale); color: var(--warning); }
+    .badge-low    { background: #f1f5f9; color: #64748b; }
+    .badge-method { background: var(--purple-pale); color: var(--purple-dark); font-size: 0.66rem; }
+
+    /* ── MODAL ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(30,27,75,0.45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-lg); width: 100%; max-width: 780px; max-height: 90vh; overflow-y: auto; animation: modalIn 0.22s ease; }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(-16px) scale(0.97); } to { opacity: 1; transform: none; } }
+    .modal-header { padding: 20px 26px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+    .modal-header h2 { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--purple-dark); }
+    .modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.4rem; line-height: 1; padding: 4px 8px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+    .modal-close:hover { background: var(--danger-pale); color: var(--danger); }
+    .modal-body { padding: 20px 26px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+    input[type="text"], input[type="number"], textarea, select { padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.83rem; font-family: 'Inter', sans-serif; color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    input:focus, textarea:focus, select:focus { border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(139,92,246,0.12); background: #fff; }
+    textarea { resize: vertical; min-height: 68px; }
+    .modal-footer { padding: 14px 26px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); }
+
+    /* ── SAVING INDICATOR ── */
+    .saving-toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--purple-dark); color: #fff;
+      border-radius: 10px; padding: 10px 18px;
+      font-size: 0.82rem; font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      display: flex; align-items: center; gap: 8px;
+      z-index: 2000;
+      animation: toastIn 0.25s ease;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .toast-spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+    /* ── DASHBOARD ── */
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .dash-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 20px; }
+    .dash-card h3 { font-family: 'Playfair Display', serif; font-size: 0.97rem; font-weight: 700; color: var(--purple-dark); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .dash-card.full { grid-column: 1 / -1; }
+    .bar-row { margin-bottom: 11px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+    .bar-track { height: 9px; background: var(--purple-faint); border-radius: 99px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width 0.7s cubic-bezier(.4,0,.2,1); }
+    .bar-fill.purple { background: linear-gradient(90deg, var(--purple-mid), var(--purple-light)); }
+    .donut-wrap { display: flex; align-items: center; gap: 22px; }
+    .donut-legend { flex: 1; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.78rem; color: var(--text-secondary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-count { margin-left: auto; font-weight: 600; color: var(--text-primary); }
+    .paper-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    .paper-card { background: linear-gradient(135deg, var(--green-faint), var(--purple-faint)); border: 1px solid var(--green-pale); border-radius: 10px; padding: 14px; transition: box-shadow 0.2s, transform 0.2s; }
+    .paper-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .paper-card-title { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; line-height: 1.35; }
+    .paper-card-meta { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 7px; }
+    .paper-card-findings { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .gap-list { display: flex; flex-direction: column; gap: 9px; }
+    .gap-item { display: flex; gap: 11px; align-items: flex-start; padding: 11px 13px; background: var(--purple-faint); border-left: 3px solid var(--purple-light); border-radius: 0 8px 8px 0; font-size: 0.79rem; color: var(--text-secondary); line-height: 1.4; }
+    .gap-num { background: var(--purple-mid); color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.63rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--purple-pale); border-radius: 99px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .main { padding: 18px 14px; }
+      .app-header { padding: 14px 16px; }
+      .tab-bar { padding: 0 14px; }
+    }
+    @media (max-width: 600px) {
+      .stat-grid { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+  // ── FIREBASE INIT (outside React/Babel) ──────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyBhHTrF2hsB_8iW4EyQIb6ckMcsJa32u5c",
+    authDomain: "research-review-tracker.firebaseapp.com",
+    projectId: "research-review-tracker",
+    storageBucket: "research-review-tracker.firebasestorage.app",
+    messagingSenderId: "854784751810",
+    appId: "1:854784751810:web:f6d1c58a97e7d84033e35b",
+    measurementId: "G-83PSH70Q88"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+const METHODOLOGIES = ["Quantitative","Qualitative","Mixed Methods","Systematic Review","Meta-Analysis","Case Study","Experimental","Survey"];
+const RELEVANCES    = ["High","Medium","Low"];
+
+// ── HELPERS ──────────────────────────────────────────────────
+const relevanceBadge = r => (
+  <span className={`badge ${r==="High"?"badge-high":r==="Medium"?"badge-medium":"badge-low"}`}>{r}</span>
+);
+const methodBadge = m => <span className="badge badge-method">{m}</span>;
+
+const SearchIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+);
+
+// ── FIRESTORE HELPERS ─────────────────────────────────────────
+const papersRef = uid => db.collection("users").doc(uid).collection("papers");
+
+// ── LOGIN SCREEN ──────────────────────────────────────────────
+function LoginScreen({ onLogin, error }) {
+  const signIn = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(console.error);
+  };
+  return (
+    <div className="login-screen">
+      <div className="login-card">
+        <div className="login-icon">📚</div>
+        <h1>Literature Review Tracker</h1>
+        <p>Organize, analyze, and export your research papers — synced to the cloud so your data is always there.</p>
+        <button className="btn-google" onClick={signIn}>
+          <svg className="google-logo" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.3 13.1 17.7 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 6.9-9.9 6.9-17z"/>
+            <path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.7 10.7l7.8-6z"/>
+            <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.7 2.2-7.7 2.2-6.3 0-11.6-4.2-13.5-9.9l-7.8 6C6.6 42.6 14.6 48 24 48z"/>
+          </svg>
+          Continue with Google
+        </button>
+        {error && <p style={{color:"var(--danger)",fontSize:"0.78rem",marginTop:"14px"}}>{error}</p>}
+        <div className="login-footer">
+          Your papers are stored privately — only you can see them.<br/>
+          Data syncs across all your devices automatically.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MODAL FORM ────────────────────────────────────────────────
+function PaperModal({ paper, onSave, onClose, saving }) {
+  const blank = { author:"", title:"", journal:"", keywords:"", researchQuestion:"", methodology:"Quantitative", sampleSize:"", findings:"", gaps:"", relevance:"High", notes:"" };
+  const [form, setForm] = useState(paper ? { ...paper } : blank);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const field = (k, label, type="text", opts={}) => (
+    <div className={`form-group${opts.full?" full":""}`}>
+      <label>{label}</label>
+      {opts.type==="select"
+        ? <select value={form[k]} onChange={e=>set(k,e.target.value)}>{opts.options.map(o=><option key={o}>{o}</option>)}</select>
+        : opts.type==="textarea"
+        ? <textarea value={form[k]} onChange={e=>set(k,e.target.value)} rows={opts.rows||3} placeholder={opts.ph||""} />
+        : <input type={type} value={form[k]} onChange={e=>set(k,type==="number"?Number(e.target.value):e.target.value)} placeholder={opts.ph||""} min={type==="number"?0:undefined} />
+      }
+    </div>
+  );
+
+  const handleSave = () => {
+    if (!form.title.trim()) { alert("Title is required."); return; }
+    onSave({ ...form, sampleSize: Number(form.sampleSize)||0 });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2>{paper ? "Edit Paper" : "Add New Paper"}</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-grid">
+            {field("author","Author & Year","text",{ph:"e.g. Smith et al. (2023)"})}
+            {field("journal","Journal","text",{ph:"e.g. Nature Machine Intelligence"})}
+            {field("title","Title","text",{full:true,ph:"Paper title"})}
+            {field("keywords","Keywords","text",{full:true,ph:"keyword1, keyword2, keyword3"})}
+            {field("researchQuestion","Research Question","text",{full:true,type:"textarea",rows:2,ph:"What is the paper investigating?"})}
+            {field("methodology","Methodology","text",{type:"select",options:METHODOLOGIES})}
+            {field("relevance","Relevance","text",{type:"select",options:RELEVANCES})}
+            {field("sampleSize","Sample Size","number",{ph:"0 if N/A"})}
+            {field("findings","Key Findings","text",{full:true,type:"textarea",rows:3,ph:"Main results and conclusions..."})}
+            {field("gaps","Research Gaps","text",{full:true,type:"textarea",rows:2,ph:"Identified gaps or limitations..."})}
+            {field("notes","Notes","text",{full:true,type:"textarea",rows:2,ph:"Your personal annotations..."})}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : paper ? "Save Changes" : "Add Paper"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PAPERS TABLE ──────────────────────────────────────────────
+function PapersTable({ papers, onEdit, onDelete }) {
+  if (!papers.length) return (
+    <div className="no-data">
+      <div className="no-data-icon">📄</div>
+      <p>No papers found. Add your first paper or adjust filters.</p>
+    </div>
+  );
+  return (
+    <div className="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            {["No.","Author & Year","Title","Journal","Keywords","Research Question","Methodology","Sample Size","Findings","Research Gaps","Relevance","Notes","Actions"]
+              .map(h => <th key={h}>{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {papers.map((p,i) => (
+            <tr key={p.id}>
+              <td style={{color:"var(--text-muted)",fontWeight:600,whiteSpace:"nowrap"}}>{i+1}</td>
+              <td style={{whiteSpace:"nowrap",fontWeight:500}}>{p.author}</td>
+              <td className="truncate" style={{maxWidth:200,fontWeight:500}}>{p.title}</td>
+              <td className="truncate" style={{maxWidth:140,color:"var(--text-secondary)"}}>{p.journal}</td>
+              <td className="truncate" style={{maxWidth:130,color:"var(--text-secondary)",fontSize:"0.74rem"}}>{p.keywords}</td>
+              <td className="truncate" style={{maxWidth:170,color:"var(--text-secondary)"}}>{p.researchQuestion}</td>
+              <td style={{whiteSpace:"nowrap"}}>{methodBadge(p.methodology)}</td>
+              <td style={{textAlign:"right",fontWeight:600,color:"var(--purple-mid)"}}>
+                {p.sampleSize>0 ? p.sampleSize.toLocaleString() : <span style={{color:"var(--text-muted)"}}>N/A</span>}
+              </td>
+              <td className="truncate" style={{maxWidth:200}}>{p.findings}</td>
+              <td className="truncate" style={{maxWidth:170,color:"var(--text-secondary)"}}>{p.gaps}</td>
+              <td>{relevanceBadge(p.relevance)}</td>
+              <td className="truncate" style={{maxWidth:140,color:"var(--text-secondary)",fontSize:"0.74rem"}}>{p.notes}</td>
+              <td style={{whiteSpace:"nowrap"}}>
+                <div style={{display:"flex",gap:4}}>
+                  <button className="btn btn-sm btn-edit" onClick={()=>onEdit(p)}>✏️</button>
+                  <button className="btn btn-sm btn-danger" onClick={()=>onDelete(p.id, p.title)}>🗑️</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function Dashboard({ papers }) {
+  const total = papers.length;
+  const methodCounts = useMemo(() => {
+    const c = {};
+    papers.forEach(p => { c[p.methodology]=(c[p.methodology]||0)+1; });
+    return Object.entries(c).sort((a,b)=>b[1]-a[1]);
+  }, [papers]);
+  const relCounts = useMemo(() => {
+    const c={High:0,Medium:0,Low:0};
+    papers.forEach(p=>{ c[p.relevance]=(c[p.relevance]||0)+1; });
+    return c;
+  }, [papers]);
+  const highPapers = papers.filter(p=>p.relevance==="High");
+  const gaps = papers.filter(p=>p.gaps&&p.gaps.trim()).map(p=>({text:p.gaps,author:p.author}));
+  const maxMethod = methodCounts[0]?.[1]||1;
+  const donutColors = {High:"#059669",Medium:"#d97706",Low:"#94a3b8"};
+  const r=48,cx=60,cy=60,circ=2*Math.PI*r;
+  let off=0;
+  const slices = RELEVANCES.map(rel=>{
+    const count=relCounts[rel]||0, pct=total>0?count/total:0;
+    const dash=pct*circ, s={rel,count,pct,dash,gap:circ-dash,offset:off,color:donutColors[rel]};
+    off+=dash; return s;
+  });
+
+  if (!total) return (
+    <div className="no-data">
+      <div className="no-data-icon">📊</div>
+      <p>Add papers to see dashboard analytics.</p>
+    </div>
+  );
+
+  return (
+    <div className="dashboard-grid">
+      <div className="dash-card">
+        <h3>📈 Methodology Distribution</h3>
+        {methodCounts.map(([m,c])=>(
+          <div className="bar-row" key={m}>
+            <div className="bar-label">
+              <span>{m}</span>
+              <span style={{fontWeight:700,color:"var(--purple-mid)"}}>{c} <span style={{fontWeight:400,color:"var(--text-muted)"}}>({Math.round(c/total*100)}%)</span></span>
+            </div>
+            <div className="bar-track"><div className="bar-fill purple" style={{width:`${(c/maxMethod)*100}%`}}/></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="dash-card">
+        <h3>🎯 Relevance Breakdown</h3>
+        <div className="donut-wrap">
+          <svg width="120" height="120">
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth="18"/>
+            {slices.map(s=>s.count>0&&(
+              <circle key={s.rel} cx={cx} cy={cy} r={r} fill="none"
+                stroke={s.color} strokeWidth="18"
+                strokeDasharray={`${s.dash} ${s.gap}`}
+                strokeDashoffset={-(s.offset-circ/4)}
+              />
+            ))}
+            <text x={cx} y={cy+5} textAnchor="middle" fontSize="15" fontWeight="700" fill="var(--text-primary)">{total}</text>
+            <text x={cx} y={cy+17} textAnchor="middle" fontSize="8" fill="var(--text-muted)">papers</text>
+          </svg>
+          <div className="donut-legend">
+            {RELEVANCES.map(rel=>(
+              <div className="legend-item" key={rel}>
+                <div className="legend-dot" style={{background:donutColors[rel]}}/>
+                <span>{rel}</span>
+                <span className="legend-count">{relCounts[rel]||0}</span>
+              </div>
+            ))}
+            <div style={{height:1,background:"var(--border)",margin:"7px 0"}}/>
+            <div className="legend-item">
+              <span style={{fontSize:"0.72rem",color:"var(--text-muted)"}}>High rate</span>
+              <span className="legend-count" style={{color:"var(--green-mid)"}}>{total>0?Math.round((relCounts.High||0)/total*100):0}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="dash-card full">
+        <h3>⭐ High Relevance Papers ({highPapers.length})</h3>
+        {!highPapers.length
+          ? <p style={{color:"var(--text-muted)",fontSize:"0.82rem"}}>No high relevance papers yet.</p>
+          : <div className="paper-cards">
+              {highPapers.map(p=>(
+                <div className="paper-card" key={p.id}>
+                  <div className="paper-card-title">{p.title}</div>
+                  <div className="paper-card-meta">{p.author} · {p.journal} · {methodBadge(p.methodology)}</div>
+                  <div className="paper-card-findings">{p.findings||<em style={{color:"var(--text-muted)"}}>No findings recorded.</em>}</div>
+                </div>
+              ))}
+            </div>
+        }
+      </div>
+
+      <div className="dash-card full">
+        <h3>🔬 Research Gaps Summary ({gaps.length})</h3>
+        {!gaps.length
+          ? <p style={{color:"var(--text-muted)",fontSize:"0.82rem"}}>No research gaps recorded.</p>
+          : <div className="gap-list">
+              {gaps.map((g,i)=>(
+                <div className="gap-item" key={i}>
+                  <div className="gap-num">{i+1}</div>
+                  <div><span style={{fontWeight:600,color:"var(--text-primary)"}}>{g.author||"Unknown"}: </span>{g.text}</div>
+                </div>
+              ))}
+            </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+// ── EXCEL EXPORT ──────────────────────────────────────────────
+function exportExcel(papers) {
+  const wb = XLSX.utils.book_new();
+  const headers = ["No.","Author & Year","Title","Journal","Keywords","Research Question","Methodology","Sample Size","Findings","Research Gaps","Relevance","Notes"];
+  const rows = papers.map((p,i)=>[i+1,p.author,p.title,p.journal,p.keywords,p.researchQuestion,p.methodology,p.sampleSize||"N/A",p.findings,p.gaps,p.relevance,p.notes]);
+  const ws1 = XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws1["!cols"]=[{wch:5},{wch:18},{wch:30},{wch:22},{wch:20},{wch:28},{wch:16},{wch:12},{wch:30},{wch:28},{wch:12},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,ws1,"Literature Review");
+
+  const total=papers.length;
+  const withSample=papers.filter(p=>p.sampleSize>0);
+  const avg=withSample.length?Math.round(withSample.reduce((a,p)=>a+p.sampleSize,0)/withSample.length):0;
+  const mc={};papers.forEach(p=>{mc[p.methodology]=(mc[p.methodology]||0)+1;});
+  const top=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0]?.[0]||"N/A";
+  const ws2=XLSX.utils.aoa_to_sheet([
+    ["DASHBOARD SUMMARY",""],["",""],
+    ["Total Papers",total],["Average Sample Size",avg],["Top Methodology",top],
+    ["High Relevance",papers.filter(p=>p.relevance==="High").length],["",""],
+    ["RELEVANCE","Count"],
+    ...RELEVANCES.map(r=>[r,papers.filter(p=>p.relevance===r).length]),
+    ["",""],["METHODOLOGY","Count"],
+    ...Object.entries(mc).sort((a,b)=>b[1]-a[1])
+  ]);
+  ws2["!cols"]=[{wch:26},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws2,"Dashboard Summary");
+  XLSX.writeFile(wb,"Literature_Review_Tracker.xlsx");
+}
+
+// ── APP ROOT ──────────────────────────────────────────────────
+function App() {
+  const [authState, setAuthState] = useState("loading"); // "loading" | "loggedOut" | "loggedIn"
+  const [user, setUser]           = useState(null);
+  const [papers, setPapers]       = useState([]);
+  const [papersLoading, setPapersLoading] = useState(false);
+  const [tab, setTab]             = useState("papers");
+  const [modal, setModal]         = useState(null); // null | "add" | paper obj
+  const [saving, setSaving]       = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [search, setSearch]       = useState("");
+  const [filterMethod, setFilterMethod] = useState("");
+  const [filterRel, setFilterRel] = useState("");
+  const [authError, setAuthError] = useState("");
+
+  // Auth listener
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(u => {
+      setUser(u);
+      setAuthState(u ? "loggedIn" : "loggedOut");
+    });
+    return unsub;
+  }, []);
+
+  // Firestore listener — runs whenever user changes
+  useEffect(() => {
+    if (!user) { setPapers([]); return; }
+    setPapersLoading(true);
+    const unsub = papersRef(user.uid)
+      .orderBy("createdAt", "asc")
+      .onSnapshot(snap => {
+        setPapers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setPapersLoading(false);
+      }, err => {
+        console.error(err);
+        setPapersLoading(false);
+      });
+    return unsub;
+  }, [user]);
+
+  const toast = useCallback(() => {
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 1800);
+  }, []);
+
+  const handleSave = useCallback(async (formData) => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const data = { ...formData, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if (modal && modal.id) {
+        // Edit
+        const { id, ...rest } = data;
+        await papersRef(user.uid).doc(modal.id).update(rest);
+      } else {
+        // Add
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await papersRef(user.uid).add(data);
+      }
+      toast();
+      setModal(null);
+    } catch(e) { console.error(e); alert("Error saving paper. Please try again."); }
+    setSaving(false);
+  }, [user, modal, toast]);
+
+  const handleDelete = useCallback(async (id, title) => {
+    if (!user) return;
+    if (!window.confirm(`Delete "${title || "this paper"}"?`)) return;
+    try { await papersRef(user.uid).doc(id).delete(); toast(); }
+    catch(e) { console.error(e); alert("Error deleting paper."); }
+  }, [user, toast]);
+
+  const signOut = () => auth.signOut();
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = papers.length;
+    const withS = papers.filter(p=>p.sampleSize>0);
+    const avg = withS.length ? Math.round(withS.reduce((a,p)=>a+p.sampleSize,0)/withS.length) : 0;
+    const mc={};papers.forEach(p=>{mc[p.methodology]=(mc[p.methodology]||0)+1;});
+    const top = Object.entries(mc).sort((a,b)=>b[1]-a[1])[0]?.[0]||"—";
+    const high = papers.filter(p=>p.relevance==="High").length;
+    return { total, avg, top, high };
+  }, [papers]);
+
+  // Filtered
+  const filtered = useMemo(() => {
+    const q=search.toLowerCase();
+    return papers.filter(p=>{
+      const ms = !q||(p.title||"").toLowerCase().includes(q)||(p.author||"").toLowerCase().includes(q)||(p.journal||"").toLowerCase().includes(q)||(p.keywords||"").toLowerCase().includes(q)||(p.findings||"").toLowerCase().includes(q);
+      return ms && (!filterMethod||p.methodology===filterMethod) && (!filterRel||p.relevance===filterRel);
+    });
+  }, [papers, search, filterMethod, filterRel]);
+
+  // ── RENDER STATES ──
+  if (authState === "loading") return (
+    <div className="loading-screen">
+      <div className="spinner"/>
+      <div className="loading-text">Loading…</div>
+    </div>
+  );
+
+  if (authState === "loggedOut") return <LoginScreen error={authError} />;
+
+  const initials = user.displayName ? user.displayName.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase() : "U";
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="app-header">
+        <div>
+          <h1>📚 Literature Review Tracker</h1>
+          <p>Your personal research library — synced to the cloud</p>
+        </div>
+        <div className="header-right">
+          <div className="header-badge">{stats.total} Papers</div>
+          <div className="user-pill">
+            {user.photoURL
+              ? <img className="user-avatar" src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" />
+              : <div className="user-avatar-fallback">{initials}</div>
+            }
+            <span className="user-name">{user.displayName||user.email}</span>
+          </div>
+          <button className="btn-signout" onClick={signOut}>Sign out</button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="tab-bar">
+        <button className={`tab-btn ${tab==="papers"?"active":""}`} onClick={()=>setTab("papers")}>📄 Papers</button>
+        <button className={`tab-btn ${tab==="dashboard"?"active":""}`} onClick={()=>setTab("dashboard")}>📊 Dashboard</button>
+      </div>
+
+      <div className="main">
+        {/* Stat Cards */}
+        <div className="stat-grid">
+          {[
+            {icon:"📄",cls:"purple",label:"Total Papers",value:stats.total,sub:"in your library"},
+            {icon:"👥",cls:"green",label:"Avg Sample Size",value:stats.avg>0?stats.avg.toLocaleString():"—",sub:"across all papers"},
+            {icon:"🔬",cls:"amber",label:"Top Methodology",value:stats.top,sub:"most used",sm:true},
+            {icon:"⭐",cls:"pink",label:"High Relevance",value:stats.high,sub:"key papers"},
+          ].map(c=>(
+            <div className="stat-card" key={c.label}>
+              <div className={`stat-icon ${c.cls}`}>{c.icon}</div>
+              <div>
+                <div className="stat-label">{c.label}</div>
+                <div className="stat-value" style={c.sm?{fontSize:"1rem",paddingTop:4}:{}}>{c.value}</div>
+                <div className="stat-sub">{c.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Papers Tab */}
+        {tab==="papers" && (
+          <>
+            <div className="toolbar">
+              <div className="search-wrap">
+                <SearchIcon/>
+                <input className="search-input" placeholder="Search title, author, journal, keywords, findings…" value={search} onChange={e=>setSearch(e.target.value)}/>
+              </div>
+              <select className="filter-select" value={filterMethod} onChange={e=>setFilterMethod(e.target.value)}>
+                <option value="">All Methodologies</option>
+                {METHODOLOGIES.map(m=><option key={m}>{m}</option>)}
+              </select>
+              <select className="filter-select" value={filterRel} onChange={e=>setFilterRel(e.target.value)}>
+                <option value="">All Relevance Levels</option>
+                {RELEVANCES.map(r=><option key={r}>{r}</option>)}
+              </select>
+              <button className="btn btn-green" onClick={()=>exportExcel(papers)}>⬇️ Export Excel</button>
+              <button className="btn btn-primary" onClick={()=>setModal("add")}>+ Add Paper</button>
+            </div>
+
+            <div className="table-wrap">
+              <div className="table-count">
+                {papersLoading
+                  ? <span>Loading your papers…</span>
+                  : <><strong>{filtered.length}</strong> of <strong>{papers.length}</strong> papers</>
+                }
+                {(search||filterMethod||filterRel) && (
+                  <button className="btn btn-sm btn-outline" onClick={()=>{setSearch("");setFilterMethod("");setFilterRel("");}}>Clear filters</button>
+                )}
+              </div>
+              {papersLoading
+                ? <div className="no-data"><div className="spinner" style={{margin:"0 auto 12px"}}/><p>Loading your papers…</p></div>
+                : <PapersTable papers={filtered} onEdit={p=>setModal(p)} onDelete={handleDelete}/>
+              }
+            </div>
+          </>
+        )}
+
+        {tab==="dashboard" && <Dashboard papers={papers}/>}
+      </div>
+
+      {/* Modal */}
+      {modal && (
+        <PaperModal
+          paper={modal==="add"?null:modal}
+          onSave={handleSave}
+          onClose={()=>setModal(null)}
+          saving={saving}
+        />
+      )}
+
+      {/* Save toast */}
+      {showToast && (
+        <div className="saving-toast">
+          <div className="toast-spinner"/>
+          Synced to cloud ✓
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>
